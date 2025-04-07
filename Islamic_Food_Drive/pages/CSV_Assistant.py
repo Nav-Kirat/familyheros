@@ -1,137 +1,108 @@
 import streamlit as st
 import pandas as pd
-import importlib
 import os
-from openai import OpenAI
+import openai
 from dotenv import load_dotenv
 
-# Load environment variables from .env file
+# Load environment variables
 load_dotenv()
-
-# Check and import libraries
-def import_with_error_handling(module_name):
-    try:
-        return importlib.import_module(module_name)
-    except ImportError as e:
-        st.error(f"Error importing {module_name}: {e}")
-        st.error("Please ensure all required libraries are installed.")
-        st.stop()
 
 # --- Page Config ---
 st.set_page_config(page_title="CSV Assistant", page_icon="📊", layout="wide")
-st.title("Ask about the CSV Data!")
+st.title("📦 Ask about the Food Hamper Data")
 
-# Set up OpenAI client with API key from environment variable
+# --- Load API Key ---
 api_key = os.environ.get("OPENAI_API_KEY")
 if not api_key:
-    st.error("OpenAI API key not found. Please set the OPENAI_API_KEY environment variable.")
+    st.error("OpenAI API key not found. Please set OPENAI_API_KEY in your .env file.")
     st.stop()
-client = OpenAI(api_key=api_key)
+openai.api_key = api_key
 
-# --- Load & Cache Data ---
+# --- Load CSV Data ---
 @st.cache_data
-def load_csv_data():
-    return pd.read_csv("updated_merged_data_with_distance.csv")
+def load_data():
+    df = pd.read_csv("updated_merged_data_with_distance.csv")
+    df = df.drop(columns=[col for col in df.columns if col.startswith("Unnamed")], errors='ignore')
+    return df
 
 try:
-    df = load_csv_data()
+    df = load_data()
 except Exception as e:
-    st.error(f"Error loading CSV data: {e}")
+    st.error(f"Failed to load CSV: {e}")
     st.stop()
 
-# --- Generate Data Summary ---
+# --- Data Summary ---
 @st.cache_data
-def generate_data_summary(df):
-    # Get basic statistics
-    num_rows = len(df)
-    num_columns = len(df.columns)
-    column_names = ", ".join(df.columns.tolist())
-    
-    # Get sample data
-    sample_data = df.head(5).to_string()
-    
-    # Create summary
-    summary = f"""
-    Dataset Summary:
-    - Total records: {num_rows}
-    - Total columns: {num_columns}
-    - Column names: {column_names}
-    
-    Sample data (first 5 rows):
-    {sample_data}
-    
-    This dataset contains information about food hamper distribution, including client details,
-    pickup information, and distance metrics.
-    """
-    return summary
+def generate_summary(df):
+    summary = f"Dataset with {df.shape[0]:,} rows and {df.shape[1]} columns.\n"
+    summary += "Columns:\n"
+    for col in df.columns:
+        summary += f"- {col} ({df[col].dtype}, {df[col].isna().sum()} nulls)\n"
+    sample = df.head(5).to_markdown(index=False)
+    return summary + "\nSample (first 5 rows):\n" + sample
 
-data_summary = generate_data_summary(df)
+data_summary = generate_summary(df)
 
-# --- Generate Narrative from Data ---
-def generate_narrative_from_enriched(df, limit=5):
-    df = df.sort_values("pickup_month").dropna(subset=["pickup_month", "monthly_hamper_demand"])
-    df = df.head(limit)
+# --- Enrich Context with Narratives ---
+def generate_narrative(df):
+    if {"pickup_month", "monthly_hamper_demand", "unique_clients", "avg_distance_km", "total_visits", "total_dependents", "returning_proportion"}.issubset(df.columns):
+        df = df.sort_values("pickup_month").dropna(subset=["pickup_month", "monthly_hamper_demand"])
+        df = df.head(5)
+        narrative = "Recent hamper activity:\n"
+        for _, row in df.iterrows():
+            narrative += (
+                f"In {row['pickup_month']}, {int(row['monthly_hamper_demand'])} hampers were needed "
+                f"for {int(row['unique_clients'])} clients. "
+                f"Avg distance: {row['avg_distance_km']:.1f} km, visits: {int(row['total_visits'])}, "
+                f"dependents: {int(row['total_dependents'])}, returning rate: {row['returning_proportion']:.2%}.\n"
+            )
+        return narrative
+    return ""
 
-    narrative = "Here are recent hamper pickup summaries:\n"
-    for _, row in df.iterrows():
-        narrative += (
-            f"In {row['pickup_month']}, approximately {int(row['monthly_hamper_demand'])} hampers were needed "
-            f"to serve {int(row['unique_clients'])} clients. "
-            f"The average client traveled {row['avg_distance_km']:.1f} km and had {int(row['total_visits'])} visits. "
-            f"Households had around {int(row['total_dependents'])} dependents total. "
-            f"Returning rate was {row['returning_proportion']:.2%}.\n"
-        )
-    return narrative
-
-hamper_narrative = generate_narrative_from_enriched(df)
+hamper_narrative = generate_narrative(df)
 
 # --- Query OpenAI ---
 def query_openai(query, context):
     try:
-        # Using the cheapest model - text-ada-001
-        response = client.chat.completions.create(
-            model="gpt-3.5-turbo-0125",  # This is one of the cheapest models available
+        response = openai.ChatCompletion.create(
+            model="gpt-3.5-turbo-0125",
             messages=[
-                {"role": "system", "content": f"You are a helpful assistant that answers questions about food hamper distribution data. Use the following context to answer questions:\n\n{context}"},
+                {"role": "system", "content": f"You are a helpful assistant for food hamper analytics.\n\n{context}"},
                 {"role": "user", "content": query}
             ],
-            max_tokens=150,
+            max_tokens=300,
             temperature=0.7
         )
-        return response.choices[0].message.content
+        return response["choices"][0]["message"]["content"]
     except Exception as e:
-        return f"Error querying OpenAI: {e}"
+        return f"OpenAI error: {e}"
 
-# --- UI: User Input & Display ---
-st.markdown("Ask questions about the food hamper distribution data in the CSV file.")
-
+# --- User Input UI ---
 query = st.text_input("💬 Ask a question about the data:")
 if query:
-    with st.spinner("Generating answer..."):
-        # Combine data summary and narrative for context
+    with st.spinner("Analyzing..."):
         context = data_summary + "\n\n" + hamper_narrative
-        answer = query_openai(query, context)
+        response = query_openai(query, context)
 
     st.markdown("### 🤖 Assistant's Response")
-    st.success(answer)
+    st.success(response)
 
-    with st.expander("📄 Data Context"):
+    with st.expander("📄 Context Used"):
         st.text(context)
 
-# --- Show Data Sample ---
-with st.expander("📊 View Data Sample"):
+# --- Show Sample & Stats ---
+with st.expander("📊 View Sample Data"):
     st.dataframe(df.head(10))
 
-# --- Show Data Statistics ---
 with st.expander("📈 Data Statistics"):
-    st.write("Numerical Columns Statistics:")
+    st.write("Numerical Summary:")
     st.dataframe(df.describe())
-    
-    st.write("Column Information:")
-    column_info = pd.DataFrame({
-        'Column': df.columns,
-        'Type': df.dtypes,
-        'Non-Null Count': df.count(),
-        'Null Count': df.isna().sum()
+
+    st.write("Column Info:")
+    col_info = pd.DataFrame({
+        "Column": df.columns,
+        "Type": df.dtypes,
+        "Nulls": df.isna().sum(),
+        "Non-Nulls": df.notna().sum()
     })
-    st.dataframe(column_info) 
+    st.dataframe(col_info)
