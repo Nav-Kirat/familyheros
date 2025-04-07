@@ -4,6 +4,8 @@ import os
 from dotenv import load_dotenv
 from openai import OpenAI
 
+st.set_page_config(page_title="CSV + Org Assistant", page_icon="📊", layout="wide")
+
 # --- Load API Key ---
 load_dotenv()
 api_key = os.getenv("OPENAI_API_KEY")
@@ -28,7 +30,7 @@ df = load_csv()
 doc_context = load_markdown()
 
 # --- Streamlit UI ---
-st.set_page_config(page_title="CSV + Org Assistant", page_icon="📊", layout="wide")
+
 st.title("🧠 Ask About Food Hamper Data or Islamic Family Organization")
 
 # --- Helper: Generate context summary ---
