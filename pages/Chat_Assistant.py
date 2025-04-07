@@ -7,8 +7,10 @@ from openai import OpenAI
 st.set_page_config(page_title="CSV + Org Assistant", page_icon="📊", layout="wide")
 
 # --- Load API Key ---
+api_key = st.secrets.get("OPENAI_API_KEY", os.getenv("OPENAI_API_KEY"))
+
 load_dotenv()
-api_key = os.getenv("OPENAI_API_KEY")
+
 if not api_key:
     st.error("Missing OpenAI API key in .env file.")
     st.stop()
@@ -54,7 +56,7 @@ def smart_answer(query):
     elif "more than 3 dependents" in q:
         if "dependents_qty" in df.columns:
             count = df[df["dependents_qty"] > 3]["unique_client"].nunique()
-            return f"Clients with more than 3 dependents: {count:,}"
+*.pyc
 
     elif "day" in q and "pick" in q:
         if "pickup_day" in df.columns:
