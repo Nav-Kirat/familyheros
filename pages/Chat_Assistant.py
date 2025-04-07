@@ -107,5 +107,5 @@ if user_q:
 with st.expander("📊 CSV Sample"):
     st.dataframe(df.head())
 
-with st.expander("📄 Organization Overview (Markdown)"):
-    st.text(doc_context[:1500] + "...")
+# with st.expander("📄 Organization Overview (Markdown)"):
+#     st.text(doc_context[:1500] + "...")
