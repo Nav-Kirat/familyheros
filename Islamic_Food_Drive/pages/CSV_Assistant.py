@@ -1,11 +1,23 @@
 import streamlit as st
 import pandas as pd
 import os
-import openai
 from dotenv import load_dotenv
+from openai import OpenAI
 
 # Load environment variables
 load_dotenv()
+api_key = os.getenv("OPENAI_API_KEY") 
+
+client = OpenAI(api_key=api_key)
+response = client.chat.completions.create(
+    model="gpt-3.5-turbo",
+    messages=[
+        {"role": "system", "content": "You are a helpful assistant..."},
+        {"role": "user", "content": query}
+    ]
+)
+
+
 
 # --- Page Config ---
 st.set_page_config(page_title="CSV Assistant", page_icon="📊", layout="wide")
