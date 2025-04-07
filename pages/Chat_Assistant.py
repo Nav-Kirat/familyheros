@@ -7,12 +7,11 @@ from openai import OpenAI
 st.set_page_config(page_title="CSV + Org Assistant", page_icon="📊", layout="wide")
 
 # --- Load API Key ---
+load_dotenv()
 api_key = st.secrets.get("OPENAI_API_KEY", os.getenv("OPENAI_API_KEY"))
 
-load_dotenv()
-
 if not api_key:
-    st.error("Missing OpenAI API key in .env file.")
+    st.error("Missing OpenAI API key in .env file or Streamlit secrets.")
     st.stop()
 client = OpenAI(api_key=api_key)
 
@@ -31,11 +30,10 @@ def load_markdown():
 df = load_csv()
 doc_context = load_markdown()
 
-# --- Streamlit UI ---
-
+# --- UI Header ---
 st.title("🧠 Ask About Food Hamper Data or Islamic Family Organization")
 
-# --- Helper: Generate context summary ---
+# --- CSV Summary ---
 @st.cache_data
 def generate_summary(df):
     summary = f"CSV has {df.shape[0]:,} rows and {df.shape[1]} columns:\n"
@@ -44,11 +42,11 @@ def generate_summary(df):
 
 data_summary = generate_summary(df)
 
-# --- Main Query Handler ---
+# --- Smart Query Handler ---
 def smart_answer(query):
     q = query.lower()
 
-    # 1. Data-based rules
+    # 1. CSV-specific rules
     if "total clients" in q:
         if "unique_client" in df.columns:
             return f"Total unique clients: {df['unique_client'].nunique():,}"
@@ -56,7 +54,7 @@ def smart_answer(query):
     elif "more than 3 dependents" in q:
         if "dependents_qty" in df.columns:
             count = df[df["dependents_qty"] > 3]["unique_client"].nunique()
-*.pyc
+            return f"Clients with more than 3 dependents: {count:,}"
 
     elif "day" in q and "pick" in q:
         if "pickup_day" in df.columns:
@@ -69,10 +67,9 @@ def smart_answer(query):
             avg = df.groupby("pickup_month")["distance_km"].mean().round(2)
             return "\n".join([f"{k}: {v} km" for k, v in avg.items()])
 
-    # 2. Org knowledge-based detection
+    # 2. Organization (markdown-based) knowledge
     org_keywords = ["islamic family", "mission", "the hub", "green room", "refugee", "support", "mental health", "prison"]
     if any(word in q for word in org_keywords) or query.endswith("?"):
-        # Query OpenAI using markdown
         messages = [
             {"role": "system", "content": f"You are a helpful assistant that answers questions about a community organization using this context:\n\n{doc_context}"},
             {"role": "user", "content": query}
@@ -85,7 +82,7 @@ def smart_answer(query):
         )
         return response.choices[0].message.content
 
-    # 3. Fallback to general AI help
+    # 3. Fallback to AI summary with CSV context
     messages = [
         {"role": "system", "content": f"You are a helpful assistant. The user has access to this CSV summary:\n{data_summary}"},
         {"role": "user", "content": query}
@@ -106,7 +103,7 @@ if user_q:
         st.markdown("### 🤖 Response")
         st.success(result)
 
-# --- Optionally show CSV and markdown preview ---
+# --- Optional Preview Sections ---
 with st.expander("📊 CSV Sample"):
     st.dataframe(df.head())
 
