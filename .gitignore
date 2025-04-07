@@ -44,6 +44,11 @@ Thumbs.db
 # Large data files
 *.csv
 *.xlsx
+
+# ✅ Allow specific CSV file at root
+!updated_merged_data_with_distance.csv
+
+# ✅ Also allow data/ folder exceptions (if used later)
 !data/*.csv
 !data/*.xlsx
 
