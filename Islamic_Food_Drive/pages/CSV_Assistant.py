@@ -56,7 +56,6 @@ def smart_answer(query):
     elif "more than 3 dependents" in q:
         if "dependents_qty" in df.columns:
             count = df[df["dependents_qty"] > 3]["unique_client"].nunique()
-*.pyc
 
     elif "day" in q and "pick" in q:
         if "pickup_day" in df.columns:

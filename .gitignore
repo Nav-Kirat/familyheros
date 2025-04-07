@@ -20,37 +20,30 @@ var/
 .installed.cfg
 *.egg
 
-# Environment variables
-.env
-.env.*
-!.env.example
-
 # Jupyter Notebook
-.ipynb_checkpoints
+.ipynb_checkpoints/
 
 # Streamlit
 .streamlit/
 
-# OS specific
+# OS
 .DS_Store
 Thumbs.db
 
-# IDE specific files
+# IDE
 .idea/
 .vscode/
 *.swp
 *.swo
 
-# Large data files
-*.csv
-*.xlsx
-
-# ✅ Allow specific CSV file at root
-!updated_merged_data_with_distance.csv
-
-# ✅ Also allow data/ folder exceptions (if used later)
-!data/*.csv
-!data/*.xlsx
-
 # Logs
 *.log
+
+# Environment variables
+.env
+.env.*
+!.env.example
+
+# Allow root-level CSVs/XLSX (override above wildcard)
+!*.csv
+!*.xlsx
