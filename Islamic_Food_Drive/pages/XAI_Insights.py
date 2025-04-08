@@ -1,48 +1,38 @@
+# XAI_Insights.py
 import streamlit as st
-import joblib
-import pandas as pd
-import matplotlib.pyplot as plt
-import seaborn as sns
-import numpy as np
+import os
+from PIL import Image
 
-st.set_page_config(page_title="XAI Insights", layout="wide")
+st.set_page_config(page_title="XAI Visuals", page_icon="🧠", layout="wide")
 st.title("🧠 Explainable AI Visualizations for Hamper Demand Forecasting")
 
-# --- Load Model ---
-@st.cache_data
-def load_model():
-    try:
-        return joblib.load("daily_hamper_demand_forecast_model.joblib")
-    except Exception as e:
-        st.error(f"❌ Error loading model: {e}")
-        return None
-
-model = load_model()
-
-if model:
-    st.success("✅ Model loaded successfully!")
-    st.write(model)
-
-    # OPTIONAL: Display expected input features if available
-    if hasattr(model, "feature_names_in_"):
-        st.subheader("📌 Model Features")
-        st.write(model.feature_names_in_)
+# --- Helper to show image safely ---
+def show_image(filename, caption):
+    img_path = os.path.join("xai", filename)
+    if os.path.exists(img_path):
+        st.image(Image.open(img_path), caption=caption, use_container_width=True)
     else:
-        st.info("No feature name info stored in model.")
+        st.warning(f"Image not found: {filename}")
 
-    # --- Sample Visualization Placeholder ---
-    st.subheader("📊 Historical Distance Distribution")
-    try:
-        df = pd.read_csv("updated_merged_data_with_distance.csv")
+# --- Section 1: Model Evaluation ---
+st.subheader("📈 Model Evaluation Metrics")
 
-        if "distance_km" in df.columns:
-            fig, ax = plt.subplots(figsize=(10, 5))
-            sns.histplot(df["distance_km"], bins=30, kde=True, ax=ax)
-            ax.set_title("Distribution of Distance to Pickup")
-            ax.set_xlabel("Distance (km)")
-            ax.set_ylabel("Count")
-            st.pyplot(fig)
-        else:
-            st.warning("distance_km column not found in CSV.")
-    except Exception as e:
-        st.error(f"Error reading distance CSV: {e}")
+col1, col2 = st.columns(2)
+
+with col1:
+    show_image("actual vs predicted.png", "Actual vs Predicted Daily Hamper Demand")
+
+with col2:
+    show_image("residual vs predicted.png", "Residuals vs Predicted Demand")
+
+# --- Section 2: SHAP Summary ---
+st.subheader("📊 SHAP Feature Importance Summary")
+show_image("shap 1.png", "SHAP Summary Plot")
+show_image("shap 2.png", "Mean Impact on Model Output Magnitude")
+
+# --- Section 3: SHAP Dependence ---
+st.subheader("🔍 SHAP Dependence Plots")
+show_image("shap 3.png", "SHAP Force Plot for Most Recent Prediction")
+show_image("shap 4.png", "Dependence: rolling_mean_7d")
+show_image("shap 5.png", "Dependence: lag_1d")
+show_image("shap 6.png", "Dependence: total_dependents")
