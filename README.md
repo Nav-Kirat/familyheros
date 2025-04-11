@@ -4,7 +4,7 @@
      height="auto"/>
 </p>
 
-# <h1 align="center" id="heading">Food Hamper Demand Forecasting - Team Members: Uchenna Mgbaja, Maryam Adesokan, Oluwatosin Adewale</h1>
+# <h1 align="center" id="heading">Food Hamper Demand Forecasting</h1>
 
 ![Food Hamper Demand Forecasting](https://img.shields.io/badge/Project-Food%20Hamper%20Demand%20Forecasting-blue)
 ![Streamlit](https://img.shields.io/badge/Streamlit-1.32.0+-red)
